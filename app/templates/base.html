@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Radio Noise Calculator</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+
+  <body>
+    <header>
+      <h1>Radio Noise Calculator</h1>
+      <p class="subtitle">Search for households in OpenStreetMap and calculate the received radio noise field strength.</p>
+    </header>
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+      <p>Marcel van den Broek, 2026</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='map.js') }}"></script>
+  </body>
+</html>

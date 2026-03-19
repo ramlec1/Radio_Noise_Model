@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <section class="controls">
+    <form id="search-form">
+      <h2 class="section-title">Location &amp; Search</h2>
+      <div class="field-row field-row--search">
+        <div class="field">
+          <label for="lat">Latitude</label>
+          <input id="lat" name="lat" type="number" step="any" value="{{ lat }}" required />
+          <div class="error" id="error-lat"></div>
+        </div>
+
+        <div class="field">
+          <label for="lon">Longitude</label>
+          <input id="lon" name="lon" type="number" step="any" value="{{ lon }}" required />
+          <div class="error" id="error-lon"></div>
+        </div>
+
+        <div class="field">
+          <label for="choose-on-map-btn" aria-hidden="true">&nbsp;</label>
+          <button type="button" id="choose-on-map-btn" class="btn-outline">Choose on map</button>
+          <div class="error" aria-hidden="true"></div>
+        </div>
+
+        <div class="field">
+          <label for="radius">Radius (m)</label>
+          <input id="radius" name="radius" type="number" min="1" max="10000" value="{{ radius }}" required />
+          <div class="error" id="error-radius"></div>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button type="submit" id="search-btn">
+          <span class="btn-label">Search Households</span>
+          <span class="spinner" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div class="form-error" id="form-error"></div>
+    </form>
+
+    <hr class="divider" />
+
+    <div id="sim-form">
+      <h2 class="section-title">Radio Noise Parameters</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="freq">Frequency (Hz)</label>
+          <input id="freq" name="freq" type="number" step="any" min="1" max="30000000" value="1000000" />
+          <div class="error" id="error-freq"></div>
+        </div>
+
+        <div class="field">
+          <label for="eirp">EIRP (dBW)</label>
+          <input id="eirp" name="eirp" type="number" step="any" value="1.0" />
+          <div class="error" id="error-eirp"></div>
+        </div>
+
+        <div class="field">
+          <label for="height">Antenna Height (m)</label>
+          <input id="height" name="height" type="number" step="any" min="0" max="50" value="1.5" />
+          <div class="error" id="error-height"></div>
+        </div>
+
+        <div class="field">
+          <label for="n_s">Surface Refractivity N<sub>s</sub> (N-units)</label>
+          <input id="n_s" name="n_s" type="number" step="any" min="250" max="400" value="250" />
+          <div class="error" id="error-n_s"></div>
+        </div>
+
+        <div class="field">
+          <label for="epsilon">Relative Permittivity &epsilon;</label>
+          <input id="epsilon" name="epsilon" type="number" step="any" min="1" value="20" />
+          <div class="error" id="error-epsilon"></div>
+        </div>
+
+        <div class="field">
+          <label for="sigma">Conductivity &sigma; (S/m)</label>
+          <input id="sigma" name="sigma" type="number" step="any" min="0.000001" value="0.03" />
+          <div class="error" id="error-sigma"></div>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button type="button" id="simulate-btn" disabled>
+          <span class="btn-label">Calculate Radio Noise</span>
+          <span class="spinner" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div class="form-error" id="sim-form-error"></div>
+
+      <div class="result-box" id="result-box" hidden>
+        <span class="result-label">Received field strength at receiver:</span>
+        <span class="result-value" id="result-value"></span>
+        <span class="result-unit">dBW/m&sup2;</span>
+        <span class="result-meta" id="result-meta"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="map-wrapper">
+    <div id="map-loading" class="map-loading" aria-hidden="true">
+      <span class="spinner spinner--large" aria-hidden="true"></span>
+      <span>Fetching households&hellip;</span>
+    </div>
+    <div id="map-pick-overlay" class="map-pick-overlay" hidden>
+      <span>Click anywhere on the map to set the receiver location</span>
+    </div>
+    <div id="map-container">{{ map_html|safe }}</div>
+    <div class="meta">Found <span id="household-count">0</span> households.</div>
+  </section>
+{% endblock %}
