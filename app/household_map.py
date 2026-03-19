@@ -22,6 +22,59 @@ _OVERPASS_ENDPOINTS = [
 ]
 
 
+def _build_address_from_tags(tags: Dict[str, Any], fallback: str) -> str:
+    """Build full address from OSM addr:* tags. Handles varying OSM tagging conventions."""
+    if not tags:
+        return fallback
+
+    full = tags.get("addr:full")
+    if full and str(full).strip():
+        return str(full).strip()
+
+    parts: List[str] = []
+
+    # House number (optionally with unit/flat)
+    hn = tags.get("addr:housenumber")
+    unit = tags.get("addr:unit") or tags.get("addr:flats")
+    if hn:
+        hn_str = str(hn).strip()
+        if unit:
+            hn_str = f"{hn_str} {str(unit).strip()}"
+        parts.append(hn_str)
+
+    # Street (or road)
+    street = tags.get("addr:street") or tags.get("addr:road") or tags.get("addr:place_name")
+    if street:
+        parts.append(str(street).strip())
+
+    # Locality: prefer city, then town, village, hamlet, suburb, quarter, place
+    locality = (
+        tags.get("addr:city")
+        or tags.get("addr:town")
+        or tags.get("addr:village")
+        or tags.get("addr:hamlet")
+        or tags.get("addr:suburb")
+        or tags.get("addr:quarter")
+        or tags.get("addr:place")
+    )
+    if locality:
+        parts.append(str(locality).strip())
+
+    # Postcode
+    postcode = tags.get("addr:postcode")
+    if postcode:
+        parts.append(str(postcode).strip())
+
+    # Country
+    country = tags.get("addr:country")
+    if country:
+        parts.append(str(country).strip())
+
+    if parts:
+        return ", ".join(parts)
+    return fallback
+
+
 # Helper functions to parse the input parameters for validation
 def _parse_float(value: Any, name: str, min_value: Optional[float] = None, max_value: Optional[float] = None) -> Tuple[Optional[float], Optional[str]]:
     """Parse a float value with optional range validation."""
@@ -182,13 +235,26 @@ def build_household_map(
 
         if not pos or None in pos:
             continue
-
-        source_id = len(sources)
-        addr = el.get("tags", {}).get("addr:housenumber") or str(el.get("id", ""))
-        src = NoiseSource(id=source_id, lat=pos[0], lon=pos[1], address=addr)
+        
+        # construct the household object with the id, lat, lon and address
+        household_id = len(sources)
+        tags = el.get("tags") or {}
+        fallback = str(el.get("id", ""))
+        addr = _build_address_from_tags(tags, fallback)
+        src = NoiseSource(id=household_id, lat=pos[0], lon=pos[1], address=addr)
         sources.append(src)
 
-        popup = f"ID: {src.id}\n({src.lat:.6f}, {src.lon:.6f})"
+        # source_id = len(sources)
+        # addr = el.get("tags", {}).get("addr:housenumber") or str(el.get("id", ""))
+        # src = NoiseSource(id=source_id, lat=pos[0], lon=pos[1], address=addr)
+        # sources.append(src)
+
+        # Create a popup with the household information and a fixed width
+        popup_text = f"<b>ID:</b> {src.id}<br><b>Address:</b> {src.address}<br><b>Coordinates:</b> ({src.lat:.6f}, {src.lon:.6f})"
+        popup_iframe = folium.IFrame(popup_text)
+        popup = folium.Popup(popup_iframe, min_width=250, max_width=250)
+
+        # popup = f"ID: {src.id}\n({src.lat:.6f}, {src.lon:.6f})"
 
         folium.CircleMarker(
             location=pos,

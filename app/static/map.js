@@ -9,9 +9,10 @@ const mapContainer  = document.getElementById('map-container');
 const mapLoading    = document.getElementById('map-loading');
 const metaCount     = document.getElementById('household-count');
 const simulateBtn   = document.getElementById('simulate-btn');
-const resultBox     = document.getElementById('result-box');
-const resultValue   = document.getElementById('result-value');
-const resultMeta    = document.getElementById('result-meta');
+const resultBox      = document.getElementById('result-box');
+const resultValue    = document.getElementById('result-value');
+const resultMeta     = document.getElementById('result-meta');
+const downloadJsonBtn = document.getElementById('download-json-btn');
 
 // Keys must match backend error keys (routes returns errors.lat, errors.form, etc.)
 const searchErrorFields = {
@@ -32,6 +33,9 @@ const simErrorFields = {
 };
 
 let householdsReady = false;  // simulate button enabled only after a successful search
+
+/** Last successful search result for JSON download. */
+let lastSearchData = null;
 
 function clearErrors(fields) {
   Object.values(fields).forEach((el) => { if (el) el.textContent = ''; });
@@ -92,6 +96,8 @@ async function submitSearch(event) {
     if (!resp.ok) {
       setErrors(searchErrorFields, data.errors || { form: 'An unexpected error occurred.' });
       householdsReady = false;
+      lastSearchData = null;
+      updateDownloadButtonState();
       simulateBtn.disabled = true;
       return;
     }
@@ -110,11 +116,20 @@ async function submitSearch(event) {
       metaCount.textContent = String(data.meta.household_count);
     }
 
+    lastSearchData = {
+      params: data.params || {},
+      household_count: data.meta?.household_count ?? 0,
+      households: data.households || [],
+    };
+    updateDownloadButtonState();
+
     householdsReady = true;
     simulateBtn.disabled = false;
 
   } catch (err) {
     setErrors(searchErrorFields, { form: 'Network error while fetching map. Please try again.' });
+    lastSearchData = null;
+    updateDownloadButtonState();
     console.error(err);
   } finally {
     setLoading(searchBtn, false);
@@ -239,6 +254,35 @@ if (chooseOnMapBtn) {
       stopChooseOnMap();
     } else {
       startChooseOnMap();
+    }
+  });
+}
+
+// ── Download JSON ─────────────────────────────────────────────────────────────
+
+function downloadHouseholdJson() {
+  if (!lastSearchData) {
+    return;
+  }
+  const json = JSON.stringify(lastSearchData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'households.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function updateDownloadButtonState() {
+  if (downloadJsonBtn) {
+    downloadJsonBtn.disabled = !lastSearchData;
+  }
+}
+if (downloadJsonBtn) {
+  downloadJsonBtn.addEventListener('click', () => {
+    if (lastSearchData) {
+      downloadHouseholdJson();
     }
   });
 }

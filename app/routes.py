@@ -65,10 +65,16 @@ def search_households():
     _last_sources = sources
     _last_center = {"lat": params["lat"], "lon": params["lon"]}
 
+    households = [
+        {"id": src.id, "lat": src.lat, "lon": src.lon, "address": src.address}
+        for src in sources
+    ]
+
     return jsonify({
         "map_html": map_html,
         "params": params,
         "meta": meta,
+        "households": households,
     })
 
 

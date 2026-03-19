@@ -107,6 +107,11 @@
       <span>Click anywhere on the map to set the receiver location</span>
     </div>
     <div id="map-container">{{ map_html|safe }}</div>
-    <div class="meta">Found <span id="household-count">0</span> households.</div>
+    <div class="meta">
+      Found <span id="household-count">0</span> households.
+      <button type="button" id="download-json-btn" class="btn-outline btn--small" disabled>
+        Download JSON
+      </button>
+    </div>
   </section>
 {% endblock %}
