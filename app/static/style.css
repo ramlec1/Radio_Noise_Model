@@ -275,12 +275,12 @@ button.loading .btn-label {
 }
 
 .meta {
-  margin-top: 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0.6rem 1rem 0rem 1rem;
   font-size: 0.95rem;
   color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
 }
 
 /* Result box */

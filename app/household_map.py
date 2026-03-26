@@ -12,7 +12,7 @@ from simulation.MMN_dataclasses import NoiseSource
 # Defaults (this is the grolloo measurement location in the ITU-R RNDb)
 DEFAULT_LAT = 52.9019
 DEFAULT_LON = 6.6533
-DEFAULT_RADIUS = 1000  # meters
+DEFAULT_RADIUS = 2500  # meters
 
 # Prefer a few different public Overpass endpoints to improve availability
 _OVERPASS_ENDPOINTS = [
@@ -185,11 +185,23 @@ def get_households(lat: float, lon: float, radius: int) -> List[Dict[str, Any]]:
     )
 
 
-def build_blank_map(lat: float, lon: float) -> str:
+def build_blank_map(lat: float, lon: float, radius: int) -> str:
     """Build a plain Folium map centred on (lat, lon) with no overlays."""
-    m = folium.Map(location=[lat, lon], zoom_start=16)
+    m = folium.Map(location=[lat, lon], zoom_start=14)
+    folium.Circle(
+        radius=radius,
+        location=[lat, lon],
+        color="crimson",
+        fill=True,
+        fill_opacity=0.2,
+    ).add_to(m)
+    
+    folium.Marker(
+        [lat, lon],
+        popup="Receiver",
+        icon=folium.Icon(color="red", icon="tower-broadcast", prefix="fa"),
+    ).add_to(m)
     return m._repr_html_()
-
 
 def build_household_map(
     lat: float, lon: float, radius: int
@@ -209,7 +221,7 @@ def build_household_map(
         elements = []
         error_msg = str(exc)
 
-    m = folium.Map(location=[lat, lon], zoom_start=16)
+    m = folium.Map(location=[lat, lon], zoom_start=14)
 
     folium.Circle(
         radius=radius,
@@ -221,7 +233,7 @@ def build_household_map(
 
     folium.Marker(
         [lat, lon],
-        popup="Center Point",
+        popup="Receiver",
         icon=folium.Icon(color="red", icon="tower-broadcast", prefix="fa"),
     ).add_to(m)
 
@@ -244,17 +256,10 @@ def build_household_map(
         src = NoiseSource(id=household_id, lat=pos[0], lon=pos[1], address=addr)
         sources.append(src)
 
-        # source_id = len(sources)
-        # addr = el.get("tags", {}).get("addr:housenumber") or str(el.get("id", ""))
-        # src = NoiseSource(id=source_id, lat=pos[0], lon=pos[1], address=addr)
-        # sources.append(src)
-
         # Create a popup with the household information and a fixed width
         popup_text = f"<b>ID:</b> {src.id}<br><b>Address:</b> {src.address}<br><b>Coordinates:</b> ({src.lat:.6f}, {src.lon:.6f})"
         popup_iframe = folium.IFrame(popup_text)
         popup = folium.Popup(popup_iframe, min_width=250, max_width=250)
-
-        # popup = f"ID: {src.id}\n({src.lat:.6f}, {src.lon:.6f})"
 
         folium.CircleMarker(
             location=pos,

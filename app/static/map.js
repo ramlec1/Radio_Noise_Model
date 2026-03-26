@@ -138,53 +138,29 @@ async function submitSearch(event) {
   }
 }
 
-// ── Simulate ─────────────────────────────────────────────────────────────────
+searchForm.addEventListener('submit', submitSearch);   // form submit → POST /search
 
-async function submitSimulation() {
-  clearErrors(simErrorFields);
-  resultBox.hidden = true;
-  setLoading(simulateBtn, true);
+// ── Refresh ──────────────────────────────────────────────────────────────────
 
-  const jsonData = {  // read from input elements by id (must match index.html)
-    freq:    document.getElementById('freq').value,
-    eirp:    document.getElementById('eirp').value,
-    height:  document.getElementById('height').value,
-    n_s:     document.getElementById('n_s').value,
-    epsilon: document.getElementById('epsilon').value,
-    sigma:   document.getElementById('sigma').value,
-  };
+async function loadPreviewMap() {
+  const lat = document.getElementById('lat').value;
+  const lon = document.getElementById('lon').value;
+  const radius = document.getElementById('radius').value;
+  const resp = await fetch('/refresh-map', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lon, radius }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) return; // handle errors
+  mapContainer.innerHTML = data.map_html;
+}
 
-  try {
-    const resp = await fetch('/simulate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(jsonData),
-    });
-
-    let data;
-    try {
-      data = await resp.json();
-    } catch (_) {
-      // e.g. server returned "NaN" or malformed JSON
-      setErrors(simErrorFields, { form: 'Invalid response from server. See console for details.' });
-      return;
-    }
-
-    if (!resp.ok) {
-      setErrors(simErrorFields, data.errors || { form: 'An unexpected error occurred.' });
-      return;
-    }
-
-    resultValue.textContent = Number(data.received_power).toFixed(2);
-    resultMeta.textContent  = `Computed from ${data.source_count} noise source(s).`;
-    resultBox.hidden = false;
-
-  } catch (err) {
-    setErrors(simErrorFields, { form: `Network error during simulation: ${err.message}` });
-    console.error(err);
-  } finally {
-    setLoading(simulateBtn, false);
-  }
+const refreshBtn = document.getElementById('refresh-btn');
+if (refreshBtn) {
+  refreshBtn.addEventListener('click', () => {
+    loadPreviewMap();
+  });
 }
 
 // ── Choose on map ────────────────────────────────────────────────────────────
@@ -279,6 +255,7 @@ function updateDownloadButtonState() {
     downloadJsonBtn.disabled = !lastSearchData;
   }
 }
+
 if (downloadJsonBtn) {
   downloadJsonBtn.addEventListener('click', () => {
     if (lastSearchData) {
@@ -287,7 +264,53 @@ if (downloadJsonBtn) {
   });
 }
 
-// ── Event listeners ───────────────────────────────────────────────────────────
+// ── Simulate ─────────────────────────────────────────────────────────────────
 
-searchForm.addEventListener('submit', submitSearch);   // form submit → POST /search
+async function submitSimulation() {
+  clearErrors(simErrorFields);
+  resultBox.hidden = true;
+  setLoading(simulateBtn, true);
+
+  const jsonData = {  // read from input elements by id (must match index.html)
+    freq:    document.getElementById('freq').value,
+    eirp:    document.getElementById('eirp').value,
+    height:  document.getElementById('height').value,
+    n_s:     document.getElementById('n_s').value,
+    epsilon: document.getElementById('epsilon').value,
+    sigma:   document.getElementById('sigma').value,
+  };
+
+  try {
+    const resp = await fetch('/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(jsonData),
+    });
+
+    let data;
+    try {
+      data = await resp.json();
+    } catch (_) {
+      // e.g. server returned "NaN" or malformed JSON
+      setErrors(simErrorFields, { form: 'Invalid response from server. See console for details.' });
+      return;
+    }
+
+    if (!resp.ok) {
+      setErrors(simErrorFields, data.errors || { form: 'An unexpected error occurred.' });
+      return;
+    }
+
+    resultValue.textContent = Number(data.received_power).toFixed(2);
+    resultMeta.textContent  = `Computed from ${data.source_count} noise source(s).`;
+    resultBox.hidden = false;
+
+  } catch (err) {
+    setErrors(simErrorFields, { form: `Network error during simulation: ${err.message}` });
+    console.error(err);
+  } finally {
+    setLoading(simulateBtn, false);
+  }
+}
+
 simulateBtn.addEventListener('click', submitSimulation);  // button click → POST /simulate

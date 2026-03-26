@@ -28,6 +28,12 @@
           <input id="radius" name="radius" type="number" min="1" max="10000" value="{{ radius }}" required />
           <div class="error" id="error-radius"></div>
         </div>
+
+        <div class="field">
+          <label for="refresh-btn" aria-hidden="true">&nbsp;</label>
+          <button type="button" id="refresh-btn"><i class="fa-solid fa-rotate-right"></i></button>
+          <div class="error" aria-hidden="true"></div>
+        </div>
       </div>
 
       <div class="button-row">
@@ -108,10 +114,8 @@
     </div>
     <div id="map-container">{{ map_html|safe }}</div>
     <div class="meta">
-      Found <span id="household-count">0</span> households.
-      <button type="button" id="download-json-btn" class="btn-outline btn--small" disabled>
-        Download JSON
-      </button>
+      <span style="margin-right: 1rem;">Found <span id="household-count">0</span> households.</span>
+      <button type="button" id="download-json-btn" class="btn-outline" disabled">Download JSON</button>
     </div>
   </section>
 {% endblock %}

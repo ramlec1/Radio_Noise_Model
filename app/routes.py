@@ -28,7 +28,7 @@ _last_center: Dict[str, float] = {"lat": DEFAULT_LAT, "lon": DEFAULT_LON}
 @main.route("/")
 def home():
     """Render the main page with default form values and a blank map."""
-    map_html = build_blank_map(DEFAULT_LAT, DEFAULT_LON)
+    map_html = build_blank_map(DEFAULT_LAT, DEFAULT_LON, DEFAULT_RADIUS)
     return render_template(
         "index.html",
         map_html=map_html,
@@ -37,6 +37,20 @@ def home():
         radius=DEFAULT_RADIUS,
         errors={},
     )
+
+
+@main.route("/refresh-map", methods=["POST"])
+def refresh_map():
+    """Refresh the map."""
+    data = request.get_json(silent=True) or request.form
+    lat, lon, radius = data.get("lat"), data.get("lon"), data.get("radius")
+
+    params, errors = validate_search_params(lat, lon, radius)
+    if errors:
+        return jsonify({"errors": errors}), 400
+
+    map_html = build_blank_map(params["lat"], params["lon"], params["radius"])
+    return jsonify({"map_html": map_html})
 
 
 @main.route("/search", methods=["POST"])
