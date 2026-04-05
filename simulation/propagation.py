@@ -111,3 +111,20 @@ def groundwave_propagation(source: NoiseSource, receiver: Receiver, environment_
         logger.exception("Error in groundwave propagation calculation")
         return np.nan
     return -prop_factor # ITU368Grwave returns the basic transmission loss in dB, so we need to negate it to get the propagation factor
+
+
+def line_of_sight_propagation(source: NoiseSource, receiver: Receiver, environment_params: EnvironmentParameters) -> float:
+    '''Calculate the propagation factor as a function of the distance
+    and frequency for free space propagation.
+
+    Parameters:
+        source: NoiseSource object, representing the transmitter
+        receiver: Receiver object, representing the receiver
+        environment_params: EnvironmentParameters object, containing N_s, epsilon, sigma
+
+    Returns:
+        propfactor:  [dB] propagation factor'''
+    r = max(receiver.distance_to(source.position), 1e-6)  # Distance in m (min 1 mm to avoid singularities)
+
+    prop_factor = 1 / (4 * np.pi * r**2)
+    return prop_factor

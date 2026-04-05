@@ -10,8 +10,35 @@
 
   <body>
     <header>
-      <h1>Radio Noise Calculator</h1>
-      <p class="subtitle">Search for households in OpenStreetMap and calculate the received radio noise field strength.</p>
+      <div class="site-header">
+        <div class="site-header__nav">
+          <button
+            type="button"
+            class="nav-toggle"
+            id="nav-toggle"
+            aria-expanded="false"
+            aria-controls="site-nav"
+            aria-haspopup="true"
+            aria-label="Open menu"
+          >
+            <i class="fa-solid fa-bars" aria-hidden="true"></i>
+          </button>
+          <nav id="site-nav" class="site-nav site-nav--dropdown" hidden>
+        <a
+          href="{{ url_for('main.home') }}"
+          {% if request.endpoint == 'main.home' %}class="is-active" aria-current="page"{% endif %}
+        >Calculator</a>
+        <a
+          href="{{ url_for('main.propmods') }}"
+          {% if request.endpoint == 'main.propmods' %}class="is-active" aria-current="page"{% endif %}
+        >Propagation models</a>
+          </nav>
+        </div>
+        <div class="site-header__brand">
+          <h1>Radio Noise Calculator</h1>
+          <p class="subtitle">Search for households in OpenStreetMap and calculate the received radio noise field strength.</p>
+        </div>
+      </div>
     </header>
 
     <main>
@@ -22,6 +49,32 @@
       <p>Marcel van den Broek, 2026</p>
     </footer>
 
+    <script>
+      (function () {
+        var toggle = document.getElementById('nav-toggle');
+        var nav = document.getElementById('site-nav');
+        if (!toggle || !nav) return;
+        function setOpen(open) {
+          nav.hidden = !open;
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        }
+        toggle.addEventListener('click', function (e) {
+          e.stopPropagation();
+          setOpen(nav.hidden);
+        });
+        document.addEventListener('click', function (e) {
+          if (nav.hidden) return;
+          if (toggle.contains(e.target) || nav.contains(e.target)) return;
+          setOpen(false);
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && !nav.hidden) setOpen(false);
+        });
+      })();
+    </script>
+    {% if request.endpoint == 'main.home' %}
     <script src="{{ url_for('static', filename='map.js') }}"></script>
+    {% endif %}
   </body>
 </html>

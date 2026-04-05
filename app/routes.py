@@ -39,6 +39,12 @@ def home():
     )
 
 
+@main.route("/propmods")
+def propmods():
+    """Propagation models reference page."""
+    return render_template("propmods.html")
+
+
 @main.route("/refresh-map", methods=["POST"])
 def refresh_map():
     """Refresh the map."""
@@ -51,7 +57,7 @@ def refresh_map():
 
     map_html = build_blank_map(params["lat"], params["lon"], params["radius"])
     return jsonify({"map_html": map_html})
-
+    
 
 @main.route("/search", methods=["POST"])
 def search_households():
