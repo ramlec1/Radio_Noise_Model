@@ -4,7 +4,7 @@ a python wrapper.
 Marcel van den Broek, 2025'''
 
 import numpy as np
-from ctypes import c_double, c_int, POINTER, Structure, CDLL, WinDLL, byref
+from ctypes import c_double, c_int, POINTER, Structure, CDLL, byref
 import os
 from concurrent.futures import ThreadPoolExecutor
 

@@ -21,6 +21,11 @@ _OVERPASS_ENDPOINTS = [
     "https://overpass.kumi.systems/api/interpreter",
 ]
 
+# Overpass requires a descriptive User-Agent identifying the application
+_OVERPASS_HEADERS = {
+    "User-Agent": "Radio_Noise_Model/1.0 (Man-made radio noise model; household map)",
+}
+
 
 def _build_address_from_tags(tags: Dict[str, Any], fallback: str) -> str:
     """Build full address from OSM addr:* tags. Handles varying OSM tagging conventions."""
@@ -170,7 +175,12 @@ def get_households(lat: float, lon: float, radius: int) -> List[Dict[str, Any]]:
     last_exc: Optional[Exception] = None
     for overpass_url in _OVERPASS_ENDPOINTS:
         try:
-            response = requests.get(overpass_url, params={"data": query}, timeout=60)
+            response = requests.get(
+                overpass_url,
+                params={"data": query},
+                headers=_OVERPASS_HEADERS,
+                timeout=60,
+            )
             response.raise_for_status()
             return response.json().get("elements", [])
         except requests.RequestException as ex:
