@@ -1,8 +1,8 @@
-from typing import Callable, List
+from typing import Callable, List, Tuple
 import numpy as np
 
 from .utils import db_to_rat, rat_to_db
-from .MMN_dataclasses import NoiseSource, Receiver, EnvironmentParameters
+from .dataclasses import NoiseSource, Receiver, EnvironmentParameters
 
 
 class NearFieldError(Exception):
@@ -26,38 +26,45 @@ class NearFieldError(Exception):
 
 
 class RadioNoiseModel:
-    """Core simulation model for radio noise power."""
-    def __init__(self, 
-                 noise_sources: List[NoiseSource], 
-                 receivers: List[Receiver],
-                 environment_params: EnvironmentParameters,
-                 propagation_function: Callable[[NoiseSource, Receiver, EnvironmentParameters], float]):                 
+    """Core simulation model for radio noise power.
+
+    Parameters
+    ----------
+    noise_sources:
+        List of NoiseSource objects representing transmitters.
+    receivers:
+        List of Receiver objects.
+    propagation_models:
+        List of (propagation_function, EnvironmentParameters) tuples.
+        Each propagation model contributes independently to the total
+        received power (incoherent summation).
+    """
+    def __init__(
+        self,
+        noise_sources: List[NoiseSource],
+        receivers: List[Receiver],
+        propagation_models: List[Tuple[Callable[[NoiseSource, Receiver, EnvironmentParameters], float], EnvironmentParameters]],
+    ):
         self.noise_sources = noise_sources
         self.receivers = receivers
-        self.environment_params = environment_params
-        self.propagation_function = propagation_function
-        
+        self.propagation_models = propagation_models
 
     def compute_total_power(self) -> bool:
-        """Compute total received power S at each receiver."""
-        
+        """Compute total received power S at each receiver.
+
+        For each receiver, sums contributions from all sources and all propagation
+        models incoherently (power addition in linear scale).
+        """
         for receiver in self.receivers:
-            total_power = 0.0                               # [dBW/m^2]
+            total_power = 0.0
             for source in self.noise_sources:
-                r = receiver.distance_to(source.position)   # [m] 
-                # Check if the receiver is in the far field of the source
+                r = receiver.distance_to(source.position)
                 receiver.far_field = receiver.far_field_condition(source)
                 if not receiver.far_field:
                     raise NearFieldError(distance_m=r, freq_hz=source.freq, source_id=source.id)
-                p_r = self.propagation_function(source, receiver, self.environment_params)
-                contribution = source.EIRP + p_r
-                total_power += db_to_rat(contribution)
+                for prop_func, env_params in self.propagation_models:
+                    p_r = prop_func(source, receiver, env_params)
+                    contribution = source.EIRP + p_r
+                    total_power += db_to_rat(contribution)
             receiver.received_power = rat_to_db(total_power)
         return True
-    
-    """
-    TODO HERE:
-    - get multiple propagation models working simultaneaously. Test which propagation model(s) should be used for which source/receiver pair.
-    - inlezen op de RNDb
-    """
-

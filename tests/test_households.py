@@ -1,8 +1,8 @@
-"""Unit tests for household_map validation (no Overpass calls)."""
+"""Unit tests for household search parameter validation (no Overpass calls)."""
 
 import unittest
 
-from app.household_map import validate_search_params
+from households.validation import validate_search_params
 
 
 class TestValidateSearchParams(unittest.TestCase):

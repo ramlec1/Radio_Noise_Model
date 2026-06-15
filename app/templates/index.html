@@ -2,6 +2,58 @@
 
 {% block content %}
   <section class="controls">
+
+    <!-- 1. Source Parameters -->
+    <h2 class="section-title">Source Parameters</h2>
+    <div class="field-row" id="source-params">
+      <div class="field">
+        <label for="freq">Frequency (Hz)</label>
+        <input id="freq" name="freq" type="number" step="any" min="1" value="1000000" />
+        <div class="error" id="error-freq"></div>
+      </div>
+
+      <div class="field">
+        <label for="eirp">EIRP (dBW)</label>
+        <input id="eirp" name="eirp" type="number" step="any" value="1.0" />
+        <div class="error" id="error-eirp"></div>
+      </div>
+
+      <div class="field">
+        <label for="source_height">Source Antenna Height (m)</label>
+        <input id="source_height" name="source_height" type="number" step="any" min="0" max="50" value="1.5" />
+        <div class="error" id="error-source_height"></div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- 2. Receiver Parameters -->
+    <h2 class="section-title">Receiver Parameters</h2>
+    <div class="field-row" id="receiver-params">
+      <div class="field">
+        <label for="receiver_height">Receiver Antenna Height (m)</label>
+        <input id="receiver_height" name="receiver_height" type="number" step="any" min="0" max="50" value="1.5" />
+        <div class="error" id="error-receiver_height"></div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- 3. Propagation Models -->
+    <h2 class="section-title">Propagation Models</h2>
+    <div id="propagation-models-error" class="form-error"></div>
+    <div id="propagation-models">
+      <!-- Populated dynamically by map.js after fetching /api/propagation-models -->
+    </div>
+    <div class="button-row" style="margin-top: 0.75rem;">
+      <button type="button" id="add-prop-model-btn" class="btn-outline btn-add-model">
+        <i class="fa-solid fa-plus"></i> Add Propagation Model
+      </button>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- 4. Location & Search -->
     <form id="search-form">
       <h2 class="section-title">Location &amp; Search</h2>
       <div class="field-row field-row--search">
@@ -47,46 +99,8 @@
 
     <hr class="divider" />
 
+    <!-- 5. Calculate -->
     <div id="sim-form">
-      <h2 class="section-title">Radio Noise Parameters</h2>
-      <div class="field-row">
-        <div class="field">
-          <label for="freq">Frequency (Hz)</label>
-          <input id="freq" name="freq" type="number" step="any" min="1" max="30000000" value="1000000" />
-          <div class="error" id="error-freq"></div>
-        </div>
-
-        <div class="field">
-          <label for="eirp">EIRP (dBW)</label>
-          <input id="eirp" name="eirp" type="number" step="any" value="1.0" />
-          <div class="error" id="error-eirp"></div>
-        </div>
-
-        <div class="field">
-          <label for="height">Antenna Height (m)</label>
-          <input id="height" name="height" type="number" step="any" min="0" max="50" value="1.5" />
-          <div class="error" id="error-height"></div>
-        </div>
-
-        <div class="field">
-          <label for="n_s">Surface Refractivity N<sub>s</sub> (N-units)</label>
-          <input id="n_s" name="n_s" type="number" step="any" min="250" max="400" value="250" />
-          <div class="error" id="error-n_s"></div>
-        </div>
-
-        <div class="field">
-          <label for="epsilon">Relative Permittivity &epsilon;</label>
-          <input id="epsilon" name="epsilon" type="number" step="any" min="1" value="20" />
-          <div class="error" id="error-epsilon"></div>
-        </div>
-
-        <div class="field">
-          <label for="sigma">Conductivity &sigma; (S/m)</label>
-          <input id="sigma" name="sigma" type="number" step="any" min="0.000001" value="0.03" />
-          <div class="error" id="error-sigma"></div>
-        </div>
-      </div>
-
       <div class="button-row">
         <button type="button" id="simulate-btn" disabled>
           <span class="btn-label">Calculate Radio Noise</span>
@@ -102,8 +116,10 @@
         <span class="result-meta" id="result-meta"></span>
       </div>
     </div>
+
   </section>
 
+  <!-- 6. Map -->
   <section class="map-wrapper">
     <div id="map-loading" class="map-loading" aria-hidden="true">
       <span class="spinner spinner--large" aria-hidden="true"></span>
@@ -115,7 +131,7 @@
     <div id="map-container">{{ map_html|safe }}</div>
     <div class="meta">
       <span style="margin-right: 1rem;">Found <span id="household-count">0</span> households.</span>
-      <button type="button" id="download-json-btn" class="btn-outline" disabled">Download JSON</button>
+      <button type="button" id="download-json-btn" class="btn-outline" disabled>Download JSON</button>
     </div>
   </section>
 {% endblock %}

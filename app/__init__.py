@@ -4,14 +4,16 @@ from flask import Flask
 def create_app():
     app = Flask(__name__)
 
-    # Load configuration
     app.config.from_mapping(
         SECRET_KEY='your_secret_key',
-        DATABASE='path_to_your_database'
     )
 
-    # Register blueprints
-    from .routes import main as main_blueprint
-    app.register_blueprint(main_blueprint)
+    from .routes.main import main_bp
+    from .routes.search import search_bp
+    from .routes.simulate import simulate_bp
+
+    app.register_blueprint(main_bp)
+    app.register_blueprint(search_bp)
+    app.register_blueprint(simulate_bp)
 
     return app

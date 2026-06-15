@@ -396,3 +396,78 @@ button.loading .btn-label {
   font-size: 0.85rem;
   color: #666;
 }
+
+/* ── Propagation model blocks ─────────────────────────────────────────────── */
+
+.prop-model-block {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.75rem;
+  background: #f9fafc;
+}
+
+.prop-model-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.prop-model-select-field {
+  flex: 1;
+  min-width: 200px;
+}
+
+.prop-model-select {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  font-size: 1rem;
+  background: #fff;
+  color: #111;
+  appearance: auto;
+}
+
+.prop-model-select:focus {
+  outline: none;
+  border-color: #3c6cff;
+  box-shadow: 0 0 0 3px rgba(60, 108, 255, 0.18);
+}
+
+.prop-model-env-fields {
+  margin-bottom: 0;
+}
+
+.prop-model-no-params {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #666;
+  font-style: italic;
+}
+
+.btn-add-model {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-delete-model {
+  flex-shrink: 0;
+  padding: 0.4rem 0.65rem;
+  background: transparent;
+  border: 1.5px solid #b00;
+  color: #b00;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  align-self: flex-end;
+  margin-bottom: 1.35rem; /* align with input bottom */
+}
+
+.btn-delete-model:hover {
+  background: #b00;
+  color: #fff;
+}
