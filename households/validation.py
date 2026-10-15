@@ -3,6 +3,8 @@
 from __future__ import annotations
 from typing import Any, Dict, Optional, Tuple, Union
 
+from .config import VALID_SOURCES, configured_source
+
 
 def _parse_float(
     value: Any,
@@ -50,18 +52,31 @@ def _parse_int(
     return i, None
 
 
+def _parse_source(value: Any) -> Tuple[Optional[str], Optional[str]]:
+    """Accept auto, overpass, or local. An empty value uses the configured source."""
+    if value is None or (isinstance(value, str) and value.strip() == ""):
+        return configured_source(), None
+    text = str(value).strip().lower()
+    if text not in VALID_SOURCES:
+        return None, "Source must be auto, overpass, or local."
+    return text, None
+
+
 def validate_search_params(
-    lat: Any, lon: Any, radius: Any
-) -> Tuple[Dict[str, Union[float, int]], Dict[str, str]]:
+    lat: Any,
+    lon: Any,
+    radius: Any,
+    source: Any = None,
+) -> Tuple[Dict[str, Union[float, int, str]], Dict[str, str]]:
     """Validate and convert location search parameters.
 
     Returns:
         (params, errors)
-        params contains keys: lat, lon, radius (typed values) if valid.
+        params contains keys: lat, lon, radius, source if valid.
         errors contains any validation messages keyed by field name.
     """
     errors: Dict[str, str] = {}
-    params: Dict[str, Union[float, int]] = {}
+    params: Dict[str, Union[float, int, str]] = {}
 
     lat_val, lat_err = _parse_float(lat, "Latitude", -90.0, 90.0)
     if lat_err:
@@ -80,5 +95,11 @@ def validate_search_params(
         errors["radius"] = radius_err
     else:
         params["radius"] = radius_val  # type: ignore[assignment]
+
+    source_val, source_err = _parse_source(source)
+    if source_err:
+        errors["source"] = source_err
+    else:
+        params["source"] = source_val  # type: ignore[assignment]
 
     return params, errors

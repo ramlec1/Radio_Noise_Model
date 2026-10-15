@@ -25,16 +25,16 @@ def refresh_map():
 
 @search_bp.route("/search", methods=["POST"])
 def search_households():
-    """Query Overpass for households, render map, store sources for simulation."""
+    """Query the selected household source, render the map, and store sources."""
     data = request.get_json(silent=True) or request.form
     lat, lon, radius = data.get("lat"), data.get("lon"), data.get("radius")
 
-    params, errors = validate_search_params(lat, lon, radius)
+    params, errors = validate_search_params(lat, lon, radius, data.get("source"))
     if errors:
         return jsonify({"errors": errors}), 400
 
     map_html, meta, sources = build_household_map(
-        params["lat"], params["lon"], params["radius"]
+        params["lat"], params["lon"], params["radius"], source=params["source"]
     )
 
     if meta.get("error"):

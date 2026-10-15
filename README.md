@@ -1,7 +1,7 @@
-# Man-made radio noise model
+# (Hu)Man-made radio noise model
 **Author:** Marcel van den Broek, 2026
 
-A web application that calculates radio noise field strength at a given location using the **MMN (Man-Made Noise) model**. The tool retrieves household locations from OpenStreetMap, treats each as a noise source, and computes the total received power at a receiver using relevant propagation model(s).
+A web application that calculates radio noise field strength at a given location using the **MMN ((Hu)Man-Made Noise) model**. The tool retrieves household locations from OpenStreetMap, treats each as a noise source, and computes the total received power at a receiver using relevant propagation model(s).
 
 
 
@@ -9,13 +9,52 @@ A web application that calculates radio noise field strength at a given location
 
 ## Usage
 
+### Main program
 Run the Flask application:
 
+```bash
+uv run run_MMN_calculator.py
+```
+or
 ```bash
 python run_MMN_calculator.py
 ```
 
 The server starts at **http://0.0.0.0:5000** (accessible on your network). Open a browser and navigate to `http://localhost:5000`.
+
+### Household data
+
+Household search works without any extra data: it calls the public Overpass API. On the search form, **Household data** chooses the source. The form starts on the value of `HOUSEHOLD_SOURCE` (`auto` when that variable is unset).
+
+| Choice | Behaviour |
+| --- | --- |
+| Auto | Use `data/households.sqlite` when that file exists, otherwise Overpass |
+| Online | Always use Overpass |
+| Local file | Use the snapshot, and report an error if it is missing |
+
+`HOUSEHOLD_LOCAL_PATH` overrides the snapshot path (default `data/households.sqlite`).
+
+To build a local snapshot, install the optional extractor in the same environment and download a Geofabrik region, e.g.:
+
+```bash
+uv run build_households.py --region europe/netherlands
+```
+
+
+```bash
+uv run build_households.py --pbf path/to/netherlands-latest.osm.pbf
+```
+
+A direct file URL is also accepted:
+
+```bash
+uv run build_households.py --url https://download.geofabrik.de/europe/netherlands-latest.osm.pbf
+```
+
+The snapshot only contains objects tagged `addr:housenumber`. Rebuild it to pick up newer OpenStreetMap data. The `.osm.pbf` download and the SQLite file are not part of the git repository.
+
+!!!!! WARNING !!!!!
+The program has no check to see if the search region lies within the local dataset. Use "online" to search a region outside the dataset or replace the local dataset.
 
 ---
 
@@ -37,7 +76,8 @@ The server starts at **http://0.0.0.0:5000** (accessible on your network). Open 
 ## Technical Notes
 
 - **Coordinate system:** Household positions are converted from WGS84 to local Cartesian (meters) using GeographicLib for accurate geodesic distances.
-- **Overpass API:** The app uses public Overpass endpoints; large radii may hit timeouts.
+- **Overpass API:** The out-of-the-box household search uses public Overpass endpoints. Results for the same place are cached in memory for about one hour, and busy mirrors are retried. Large radii may still time out.
+- **Local household snapshot:** Optional and faster. Build `data/households.sqlite` from a regional OpenStreetMap extract (see Household data below). The file is a snapshot and is not updated on its own. Set `HOUSEHOLD_SOURCE` to `auto` (default), `overpass`, or `local`. `auto` uses the snapshot when the file exists.
 - **ITU-R P.368-13:** The C++ source code has some MSVC compiler specific code. Compiling it into a .so shared library resulted in errors or wrong calculations. Therefore, only the .dll implementation for windows is available at this moment.
 
 ---

@@ -1,16 +1,31 @@
-"""Folium map rendering and NoiseSource construction from Overpass data."""
+"""Folium map rendering and NoiseSource construction from household points."""
 
 from __future__ import annotations
+
 from typing import Any, Dict, List, Optional, Tuple
 
 import folium
+from folium.plugins import FastMarkerCluster
 
 from simulation.dataclasses import NoiseSource
-from .overpass import (
-    ExternalServiceError,
-    _build_address_from_tags,
-    get_households,
-)
+
+from .address import build_address_from_tags
+from .errors import ExternalServiceError, LocalDataError
+from .source import SOURCE_LABELS, get_households
+
+
+_HOUSEHOLD_MARKER_CALLBACK = """
+function (row) {
+    var marker = L.circleMarker(new L.LatLng(row[0], row[1]), {
+        radius: 4,
+        color: "blue",
+        fill: true,
+        fillOpacity: 0.8
+    });
+    marker.bindPopup(row[2], {minWidth: 250, maxWidth: 250});
+    return marker;
+}
+"""
 
 
 def build_blank_map(lat: float, lon: float, radius: int) -> str:
@@ -32,23 +47,28 @@ def build_blank_map(lat: float, lon: float, radius: int) -> str:
 
 
 def build_household_map(
-    lat: float, lon: float, radius: int
+    lat: float,
+    lon: float,
+    radius: int,
+    source: Optional[str] = None,
 ) -> Tuple[str, Dict[str, Any], List[NoiseSource]]:
     """Build a Folium map showing households within the search radius.
 
-    Fetches household data from Overpass, plots each as a circle marker,
-    and returns the map HTML, metadata, and a list of NoiseSource objects.
+    Loads household points from the selected source, plots them as a marker
+    cluster, and returns the map HTML, metadata, and NoiseSource objects.
 
     Returns:
         (map_html, meta, sources)
         sources: NoiseSource objects with id, lat, lon, address set;
                  position, EIRP, freq, height are filled in at simulation time.
+        meta includes household_count and, on success, source and source_label.
     """
     error_msg: Optional[str] = None
+    resolved_source: Optional[str] = None
     try:
-        elements = get_households(lat, lon, radius)
-    except ExternalServiceError as exc:
-        elements = []
+        households, resolved_source = get_households(lat, lon, radius, source=source)
+    except (ExternalServiceError, LocalDataError) as exc:
+        households = []
         error_msg = str(exc)
 
     m = folium.Map(location=[lat, lon], zoom_start=14)
@@ -66,41 +86,35 @@ def build_household_map(
     ).add_to(m)
 
     sources: List[NoiseSource] = []
-    for el in elements:
-        if el.get("type") == "node":
-            pos = [el.get("lat"), el.get("lon")]
-        else:
-            center = el.get("center") or {}
-            pos = [center.get("lat"), center.get("lon")]
-
-        if not pos or None in pos:
-            continue
-
+    cluster_rows: List[List[object]] = []
+    for household in households:
         household_id = len(sources)
-        tags = el.get("tags") or {}
-        fallback = str(el.get("id", ""))
-        addr = _build_address_from_tags(tags, fallback)
-        src = NoiseSource(id=household_id, lat=pos[0], lon=pos[1], address=addr)
+        address = build_address_from_tags(household.tags, household.osm_id)
+        src = NoiseSource(
+            id=household_id,
+            lat=household.lat,
+            lon=household.lon,
+            address=address,
+        )
         sources.append(src)
-
         popup_text = (
             f"<b>ID:</b> {src.id}<br>"
             f"<b>Address:</b> {src.address}<br>"
             f"<b>Coordinates:</b> ({src.lat:.6f}, {src.lon:.6f})"
         )
-        popup_iframe = folium.IFrame(popup_text)
-        popup = folium.Popup(popup_iframe, min_width=250, max_width=250)
+        cluster_rows.append([household.lat, household.lon, popup_text])
 
-        folium.CircleMarker(
-            location=pos,
-            radius=4,
-            popup=popup,
-            color="blue",
-            fill=True,
-            fill_opacity=0.8,
+    if cluster_rows:
+        FastMarkerCluster(
+            cluster_rows,
+            callback=_HOUSEHOLD_MARKER_CALLBACK,
+            control=False,
         ).add_to(m)
 
     meta: Dict[str, Any] = {"household_count": len(sources)}
+    if resolved_source:
+        meta["source"] = resolved_source
+        meta["source_label"] = SOURCE_LABELS.get(resolved_source, resolved_source)
     if error_msg:
         meta["error"] = error_msg
     return m._repr_html_(), meta, sources

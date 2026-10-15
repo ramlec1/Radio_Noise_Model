@@ -2,8 +2,9 @@
 
 from flask import render_template, Blueprint
 
+from households.config import configured_source
 from households.map_builder import build_blank_map
-from households.overpass import DEFAULT_LAT, DEFAULT_LON, DEFAULT_RADIUS
+from households.models import DEFAULT_LAT, DEFAULT_LON, DEFAULT_RADIUS
 
 main_bp = Blueprint('main', __name__)
 
@@ -18,6 +19,7 @@ def home():
         lat=DEFAULT_LAT,
         lon=DEFAULT_LON,
         radius=DEFAULT_RADIUS,
+        household_source=configured_source(),
         errors={},
     )
 

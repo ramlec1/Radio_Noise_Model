@@ -4,3 +4,4 @@ requests>=2.32
 Flask>=3.0
 folium>=0.18.0
 geographiclib>=2.0
+osmium>=3.7

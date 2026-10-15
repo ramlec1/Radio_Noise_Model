@@ -150,7 +150,7 @@ main {
 /* Grid layout for search row: labels, inputs, errors in separate rows so button aligns with inputs */
 .field-row--search {
   display: grid;
-  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
   grid-template-rows: auto auto auto;
   grid-auto-flow: column;
   gap: 0.25rem 1rem;
@@ -177,14 +177,17 @@ main {
   font-size: 0.9rem;
 }
 
-.field input {
+.field input,
+.field select {
   padding: 0.45rem 0.6rem;
   border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 6px;
   font-size: 1rem;
+  background: #fff;
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus {
   outline: none;
   border-color: #3c6cff;
   box-shadow: 0 0 0 3px rgba(60, 108, 255, 0.18);

@@ -86,6 +86,16 @@
           <button type="button" id="refresh-btn"><i class="fa-solid fa-rotate-right"></i></button>
           <div class="error" aria-hidden="true"></div>
         </div>
+
+        <div class="field">
+          <label for="household-source">Household data</label>
+          <select id="household-source" name="source">
+            <option value="auto"{% if household_source|default('auto') == 'auto' %} selected{% endif %}>Auto</option>
+            <option value="overpass"{% if household_source|default('auto') == 'overpass' %} selected{% endif %}>Online</option>
+            <option value="local"{% if household_source|default('auto') == 'local' %} selected{% endif %}>Local file</option>
+          </select>
+          <div class="error" id="error-source"></div>
+        </div>
       </div>
 
       <div class="button-row">
@@ -130,7 +140,7 @@
     </div>
     <div id="map-container">{{ map_html|safe }}</div>
     <div class="meta">
-      <span style="margin-right: 1rem;">Found <span id="household-count">0</span> households.</span>
+      <span style="margin-right: 1rem;">Found <span id="household-count">0</span> households<span id="household-source-label"></span>.</span>
       <button type="button" id="download-json-btn" class="btn-outline" disabled>Download JSON</button>
     </div>
   </section>

@@ -9,6 +9,7 @@ const searchForm    = document.getElementById('search-form');
 const mapContainer  = document.getElementById('map-container');
 const mapLoading    = document.getElementById('map-loading');
 const metaCount     = document.getElementById('household-count');
+const metaSource    = document.getElementById('household-source-label');
 const simulateBtn   = document.getElementById('simulate-btn');
 const resultBox      = document.getElementById('result-box');
 const resultValue    = document.getElementById('result-value');
@@ -23,6 +24,7 @@ const searchErrorFields = {
   lat:    document.getElementById('error-lat'),
   lon:    document.getElementById('error-lon'),
   radius: document.getElementById('error-radius'),
+  source: document.getElementById('error-source'),
   form:   document.getElementById('form-error'),
 };
 
@@ -256,6 +258,7 @@ async function submitSearch(event) {
     lat:    formData.get('lat'),
     lon:    formData.get('lon'),
     radius: formData.get('radius'),
+    source: formData.get('source'),
   };
 
   try {
@@ -273,6 +276,8 @@ async function submitSearch(event) {
       lastSimulationData = null;
       updateDownloadButtonState();
       simulateBtn.disabled = true;
+      if (metaSource) metaSource.textContent = '';
+      if (metaCount) metaCount.textContent = '0';
       return;
     }
 
@@ -288,6 +293,10 @@ async function submitSearch(event) {
     if (data.meta && typeof data.meta.household_count !== 'undefined') {
       metaCount.textContent = String(data.meta.household_count);
     }
+    if (metaSource) {
+      const sourceLabel = data.meta && data.meta.source_label;
+      metaSource.textContent = sourceLabel ? ` (${sourceLabel})` : '';
+    }
 
     householdsReady = true;
     simulateBtn.disabled = false;
@@ -297,6 +306,8 @@ async function submitSearch(event) {
 
   } catch (err) {
     setErrors(searchErrorFields, { form: 'Network error while fetching map. Please try again.' });
+    if (metaSource) metaSource.textContent = '';
+    if (metaCount) metaCount.textContent = '0';
     lastSimulationData = null;
     updateDownloadButtonState();
     console.error(err);

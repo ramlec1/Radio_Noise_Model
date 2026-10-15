@@ -1,106 +1,165 @@
-"""Overpass API interaction for OSM household extraction."""
+"""Overpass API client for household locations."""
 
 from __future__ import annotations
+
+import time
 from typing import Any, Dict, List, Optional
 
 import requests
 
+from .cache import lookup_key, overpass_cache
+from .config import USER_AGENT
+from .errors import ExternalServiceError
+from .models import Household
 
-# Defaults (this is the Grolloo measurement location in the ITU-R RNDb)
-DEFAULT_LAT = 52.9019
-DEFAULT_LON = 6.6533
-DEFAULT_RADIUS = 2500  # meters
 
-# Prefer a few different public Overpass endpoints to improve availability
+# Prefer a few different public Overpass endpoints to improve availability.
 _OVERPASS_ENDPOINTS = [
     "https://overpass-api.de/api/interpreter",
     "https://lz4.overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
 ]
 
-
-class ExternalServiceError(Exception):
-    """Raised when an external API (Overpass) fails or times out."""
-
-
-def _build_address_from_tags(tags: Dict[str, Any], fallback: str) -> str:
-    """Build full address from OSM addr:* tags. Handles varying OSM tagging conventions."""
-    if not tags:
-        return fallback
-
-    full = tags.get("addr:full")
-    if full and str(full).strip():
-        return str(full).strip()
-
-    parts: List[str] = []
-
-    # House number (optionally with unit/flat)
-    hn = tags.get("addr:housenumber")
-    unit = tags.get("addr:unit") or tags.get("addr:flats")
-    if hn:
-        hn_str = str(hn).strip()
-        if unit:
-            hn_str = f"{hn_str} {str(unit).strip()}"
-        parts.append(hn_str)
-
-    # Street (or road)
-    street = tags.get("addr:street") or tags.get("addr:road") or tags.get("addr:place_name")
-    if street:
-        parts.append(str(street).strip())
-
-    # Locality: prefer city, then town, village, hamlet, suburb, quarter, place
-    locality = (
-        tags.get("addr:city")
-        or tags.get("addr:town")
-        or tags.get("addr:village")
-        or tags.get("addr:hamlet")
-        or tags.get("addr:suburb")
-        or tags.get("addr:quarter")
-        or tags.get("addr:place")
-    )
-    if locality:
-        parts.append(str(locality).strip())
-
-    # Postcode
-    postcode = tags.get("addr:postcode")
-    if postcode:
-        parts.append(str(postcode).strip())
-
-    # Country
-    country = tags.get("addr:country")
-    if country:
-        parts.append(str(country).strip())
-
-    if parts:
-        return ", ".join(parts)
-    return fallback
+_RETRY_STATUSES = {429, 502, 503, 504}
+_MAX_RETRIES = 2
+_REQUEST_TIMEOUT_SECONDS = 60
+_MAX_BACKOFF_SECONDS = 60
+_MIRROR_PAUSE_SECONDS = 1.0
 
 
-def get_households(lat: float, lon: float, radius: int) -> List[Dict[str, Any]]:
-    """Query Overpass and return OSM elements with house numbers.
+def _pause(seconds: float) -> None:
+    """Wait before a retry. Tests replace this so they do not sleep."""
+    if seconds > 0:
+        time.sleep(seconds)
 
-    Overpass can time out on larger radius queries; this function will try a few
-    endpoints and raise a clear exception if all attempts fail.
-    """
-    query = f"""
+
+def _backoff_seconds(attempt: int, response: Optional[requests.Response]) -> float:
+    """Honor Retry-After when present, otherwise back off exponentially."""
+    if response is not None:
+        retry_after = response.headers.get("Retry-After")
+        if retry_after:
+            try:
+                return min(max(float(retry_after), 0.0), _MAX_BACKOFF_SECONDS)
+            except ValueError:
+                pass
+    return min(float(2 ** attempt), _MAX_BACKOFF_SECONDS)
+
+
+def _build_query(lat: float, lon: float, radius: int) -> str:
+    return f"""
     [out:json][timeout:60];
     (
-      node[\"addr:housenumber\"](around:{radius},{lat},{lon});
-      way[\"addr:housenumber\"](around:{radius},{lat},{lon});
-      relation[\"addr:housenumber\"](around:{radius},{lat},{lon});
+      node["addr:housenumber"](around:{radius},{lat},{lon});
+      way["addr:housenumber"](around:{radius},{lat},{lon});
+      relation["addr:housenumber"](around:{radius},{lat},{lon});
     );
     out center;
     """
 
-    last_exc: Optional[Exception] = None
-    for overpass_url in _OVERPASS_ENDPOINTS:
-        try:
-            response = requests.get(overpass_url, params={"data": query}, timeout=60)
-            response.raise_for_status()
-            return response.json().get("elements", [])
-        except requests.RequestException as ex:
-            last_exc = ex
+
+def _tags_from_element(element: Dict[str, Any]) -> Dict[str, str]:
+    raw = element.get("tags") or {}
+    if not isinstance(raw, dict):
+        return {}
+    return {str(key): str(value) for key, value in raw.items()}
+
+
+def _position(element: Dict[str, Any]) -> Optional[tuple]:
+    if element.get("type") == "node":
+        lat, lon = element.get("lat"), element.get("lon")
+    else:
+        center = element.get("center") or {}
+        lat, lon = center.get("lat"), center.get("lon")
+    if lat is None or lon is None:
+        return None
+    return float(lat), float(lon)
+
+
+def elements_to_households(elements: List[Dict[str, Any]]) -> List[Household]:
+    """Convert an Overpass ``elements`` array into household points."""
+    households: List[Household] = []
+    for element in elements:
+        position = _position(element)
+        if position is None:
             continue
+        lat, lon = position
+        element_type = str(element.get("type") or "node")
+        osm_id = f"{element_type}/{element.get('id', '')}"
+        households.append(
+            Household(
+                lat=lat,
+                lon=lon,
+                tags=_tags_from_element(element),
+                osm_id=osm_id,
+            )
+        )
+    return households
+
+
+def _query_mirror(url: str, query: str) -> tuple[Optional[List[Household]], Optional[Exception]]:
+    """POST one mirror, retrying rate limits, gateway errors, and timeouts."""
+    last_exc: Optional[Exception] = None
+    for attempt in range(_MAX_RETRIES + 1):
+        try:
+            response = requests.post(
+                url,
+                data={"data": query},
+                headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+                timeout=_REQUEST_TIMEOUT_SECONDS,
+            )
+        except requests.Timeout as exc:
+            last_exc = exc
+            if attempt < _MAX_RETRIES:
+                _pause(_backoff_seconds(attempt, None))
+                continue
+            return None, exc
+        except requests.RequestException as exc:
+            return None, exc
+
+        if response.status_code in _RETRY_STATUSES:
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as exc:
+                last_exc = exc
+            if attempt < _MAX_RETRIES:
+                _pause(_backoff_seconds(attempt, response))
+                continue
+            return None, last_exc
+
+        try:
+            response.raise_for_status()
+            payload = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            return None, exc
+
+        elements = payload.get("elements", []) if isinstance(payload, dict) else []
+        return elements_to_households(elements), None
+
+    return None, last_exc
+
+
+def fetch_households(lat: float, lon: float, radius: int) -> List[Household]:
+    """Query Overpass and return households with a house number.
+
+    Successful results are cached for about one hour. Failures are not cached.
+    Each mirror is retried on 429, 502, 503, 504, and timeouts before the next
+    mirror is tried.
+    """
+    key = lookup_key(lat, lon, radius)
+    cached = overpass_cache.get(key)
+    if cached is not None:
+        return list(cached)
+
+    query = _build_query(lat, lon, radius)
+    last_exc: Optional[Exception] = None
+    for index, overpass_url in enumerate(_OVERPASS_ENDPOINTS):
+        if index:
+            _pause(_MIRROR_PAUSE_SECONDS)
+        households, exc = _query_mirror(overpass_url, query)
+        if households is not None:
+            overpass_cache.put(key, households)
+            return list(households)
+        last_exc = exc
 
     raise ExternalServiceError(
         "Unable to query OpenStreetMap (Overpass) right now. "
